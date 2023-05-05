@@ -19,7 +19,7 @@ class Expect(object):
         self.poller.register(self.fd, select.POLLIN)
 
         if logfile is None: logfile = os.devnull
-        self.logfile = open(logfile, "wb")
+        self.logfile = open(logfile, "w")
         self.quiet = quiet
 
     def __del__(self):
@@ -45,7 +45,7 @@ class Expect(object):
                     if e.errno in [EAGAIN, EWOULDBLOCK]:
                         continue
                     else: raise
-                self.logfile.write(char)
+                self.logfile.write(char.decode('utf-8'))
                 if not self.quiet: sys.stdout.write(char.decode("utf-8","ignore"))
 
                 sofar.extend(char)
@@ -60,10 +60,20 @@ class Expect(object):
         raise TimeoutExpired()
 
     def send(self, msg):
-        os.write(self.fd, msg)
-        self.logfile.write(msg)
-        self.logfile.flush()
+        # msg always has to be bytes here?
+        if isinstance(msg, bytes):
+            os.write(self.fd, msg)
+            self.logfile.write(msg.decode('utf-8'))
+            self.logfile.flush()
+        else:
+            print(f"[+] Didn't get bytes, quitting.")
 
     def sendline(self, msg=b""):
-        self.send(msg + b"\n")
+        print(f"[RPW-TEST] Running command: `{msg}` with type: {type(msg)}")
+        if (msg == b""):
+            self.send(msg + b"\n")
+        else:
+            msg = b''.join([bytes(msg, encoding='utf-8'), b"\n"])
+            self.send(msg)
+
 
